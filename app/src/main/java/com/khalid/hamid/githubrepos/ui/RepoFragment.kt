@@ -16,7 +16,6 @@
 
 package com.khalid.hamid.githubrepos.ui
 
-import android.animation.*
 import android.app.Application
 import android.app.Dialog
 import android.os.Bundle
@@ -29,6 +28,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.observe
 import androidx.navigation.fragment.findNavController
 import com.khalid.hamid.githubrepos.R
 import com.khalid.hamid.githubrepos.databinding.FragmentRepoBinding
@@ -37,7 +37,6 @@ import com.khalid.hamid.githubrepos.di.Injectable
 import com.khalid.hamid.githubrepos.testing.OpenForTesting
 import com.khalid.hamid.githubrepos.utilities.*
 import javax.inject.Inject
-import kotlinx.android.synthetic.main.fragment_repo.*
 import kotlinx.android.synthetic.main.item_card.view.*
 import timber.log.Timber
 
@@ -53,91 +52,77 @@ class RepoFragment : Fragment(), Injectable {
     val vm: RepoViewModel by viewModels {
         viewModelFactory
     }
+    lateinit var itemCards: MutableList<ItemCardBinding>
     val handler = Handler()
+
     val runnable = Runnable {
-        if (waitForFlipBack) {
-            waitForFlipBack = false
-            vm.current?.flipOut()
-            vm.previousNumber?.flipOut()
-            vm.previousNumber = null
-            vm.current = null
-        }
+       vm.flipBackUnmatched()
     }
 
-    var waitForFlipBack = false
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        vm.itemCards = mutableListOf(
+        itemCards = mutableListOf(
             binding.card1, binding.card2, binding.card3, binding.card4, binding.card5, binding.card6, binding.card7, binding.card8, binding.card9, binding.card10, binding.card11, binding.card12
         )
         binding.toolbarStepsCount.text = "0"
-        binding.toolbarRestart.setOnClickListener { restart() }
-        vm.itemCards.forEachIndexed { index, it ->
-            it.cardBack.tv_number.text = vm.CARD_PAIRS_VALUE[index].toString()
-            it.clItem.setOnClickListener {
-                if (waitForFlipBack) {
-                    Timber.d("Game in Play")
-                    return@setOnClickListener
-                }
-                Timber.d("Item Clicked ID ${it.id}")
-                val item = vm.itemCards.first { itemCardBinding -> itemCardBinding.clItem.id == it.id }
-                Timber.d("found ID ${item.clItem.id}")
-                if (item.isFlipped()) {
-                    Timber.d("isFlipped")
-                    return@setOnClickListener
-                }
-                if (item.clItem.isAnimationInProgress) {
-                    Timber.d("isAnimationInProgress")
-                    return@setOnClickListener
-                }
-                vm.steps += 1
-                binding.toolbarStepsCount.text = vm.steps.toString()
-                vm.current = item
-                if (!item.checkForMatch()) {
-                    Timber.d("It's not a match")
-                    waitForFlipBack = true
-                }
-                item.flipIn()
-                vm.current = item
-                handler.postDelayed(runnable, 1000)
+        binding.toolbarRestart.setOnClickListener {
+        //    restart()
+            vm.restart.invoke()
+        }
 
-                Timber.d("Steps ${vm.steps}")
+        vm.itemCards.clear()
+        itemCards.forEachIndexed { index, it ->
+            it.cardBack.tv_number.text = vm.CARD_PAIRS_VALUE[index].toString()
+            val cardId = it.clItem.id
+            val number = it.clItem.card_back.cl_card_back.tv_number.text.toString().toInt()
+            Timber.d(" cardId $cardId number : $number")
+            vm.itemCards.add(Card(id = cardId, number = number))
+        }
+
+        itemCards.forEachIndexed { index, it ->
+            it.clItem.setOnClickListener {
+                Timber.d("clicked id ${it.id}")
+                vm.onCardClicked(it.id)
             }
         }
-    }
 
-    fun restart() {
-        vm.buildNumbers()
-        handler.removeCallbacks(runnable)
-        vm.current?.flipOut()
-        vm.previousNumber?.flipOut()
-        vm.matchedNumbers.forEach {
-            it.flipOut()
-        }
-        vm.matchedNumbers.clear()
-        binding.toolbarStepsCount.text = "0"
-    }
+        vm.repoEventLiveData.observe(viewLifecycleOwner) {
+            when(it){
+                is FlipOutItemEvent -> {
+                    val cardId = (it as FlipOutItemEvent).cardId
+                    Timber.d("flip in ID $cardId")
 
-    fun ItemCardBinding.checkForMatch(): Boolean {
-        val numberString = cardBack.tv_number.text.toString()
-        if (vm.previousNumber == null) {
-            vm.previousNumber = this
-            return true
-        } else if (vm.previousNumber?.cardBack?.tv_number?.text.toString() == numberString) {
-            vm.matchedNumbers.add(this)
-            vm.previousNumber?.run {
-                vm.matchedNumbers.add(this)
-                if (vm.matchedNumbers.size == vm.itemCards.size) {
+                    val item = itemCards.first { it.clItem.id == cardId }
+                    item.flipOut()
+                }
+                is FlipInItemEvent -> {
+                    itemCards.map { it.clItem.id }.forEach { cardId -> Timber.d("all ids $cardId") }
+
+                    val cardId = (it as FlipInItemEvent).cardId
+                    Timber.d("flip in ID $cardId")
+
+                    val item = itemCards.first { it.clItem.id == cardId }
+                    item.flipIn()
+                }
+                is RestartEvent -> {
+                    binding.toolbarStepsCount.text = "0"
+                }
+                is DelayRunnableEvent -> {
+                    handler.postDelayed(runnable, 1000)
+                }
+                is RemoveRunnableEvent -> {
+                    handler.removeCallbacks(runnable)
+                }
+                is StepUpdateEvent -> {
+                    binding.toolbarStepsCount.text = vm.steps.toString()
+                }
+                is ShowDialogEvent -> {
                     showDialog()
                 }
             }
-            handler.removeCallbacks(runnable)
-            vm.previousNumber = null
-            return true
-        } else {
-            Timber.d(" not a match")
-            return false
+
         }
+
     }
 
     fun ItemCardBinding.isFlipped() = cardBack.visibility == View.VISIBLE
@@ -168,12 +153,13 @@ class RepoFragment : Fragment(), Injectable {
             else -> false
     }
 
+
     fun ItemCardBinding.flipIn() {
-        clItem.flipCard(this.root.context, cardBack, cardFront)
+        clItem.flipCard(this.root.context, cardBack, cardFront, vm.onAnimationCompleted)
     }
 
     fun ItemCardBinding.flipOut() {
-        clItem.flipCard(this.root.context, cardFront, cardBack)
+        clItem.flipCard(this.root.context, cardFront, cardBack, vm.onAnimationCompleted)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -183,7 +169,7 @@ class RepoFragment : Fragment(), Injectable {
     }
 
     fun showDialog() = activity?.run {
-        val dialog = GameCompletionDialog(vm.steps, ::restart)
+        val dialog = GameCompletionDialog(vm.steps, vm.restart )
         dialog.show(supportFragmentManager, "")
     }
 

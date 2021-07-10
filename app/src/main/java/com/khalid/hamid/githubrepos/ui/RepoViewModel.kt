@@ -1,17 +1,26 @@
 /*
- * Copyright 2020 Mohammed Khalid Hamid.
+ * MIT License
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright 2021 Mohammed Khalid Hamid.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
  */
 
 package com.khalid.hamid.githubrepos.ui
@@ -19,30 +28,27 @@ package com.khalid.hamid.githubrepos.ui
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.khalid.hamid.githubrepos.databinding.ItemCardBinding
-import com.khalid.hamid.githubrepos.network.Resource
 import com.khalid.hamid.githubrepos.testing.OpenForTesting
-import com.khalid.hamid.githubrepos.vo.GitRepos
 import java.security.SecureRandom
 import java.util.Random
 import javax.inject.Inject
-import kotlinx.android.synthetic.main.item_card.view.*
+import timber.log.Timber
 
 @OpenForTesting
 class RepoViewModel@Inject constructor() : ViewModel() {
 
-    val default = GitRepos("", emptyList(), 0)
-    val items: LiveData<Resource<GitRepos>>
-    get() = _items
-    private val _items = MutableLiveData<Resource<GitRepos>>().apply {
-        value = Resource.loading(default) }
     var steps: Int = 0
-    var previousNumber: ItemCardBinding? = null
-    var current: ItemCardBinding? = null
-    val matchedNumbers = mutableListOf<ItemCardBinding>()
+    var previousNumber: Card? = null
+    var current: Card? = null
+    val matchedCards = mutableListOf<Card>()
+    var waitForFlipBack = false
+
+    val repoEventLiveData: LiveData<RepoEvent>
+        get() = _repoEventLiveData
+    private val _repoEventLiveData = MutableLiveData<RepoEvent>()
 
     val CARD_PAIRS_VALUE = mutableListOf<Int>()
-    lateinit var itemCards: MutableList<ItemCardBinding>
+    var itemCards = mutableListOf<Card>()
 
     fun randInt(): Int {
         val rand: Random = SecureRandom()
@@ -50,18 +56,140 @@ class RepoViewModel@Inject constructor() : ViewModel() {
     }
     val uniqueNumbers = 6
 
-    init {
-        buildNumbers()
-    }
+    init { buildNumbers() }
 
     fun buildNumbers() {
         CARD_PAIRS_VALUE.clear()
-        for (uniqueNumbers in 1..6) {
-            CARD_PAIRS_VALUE.add(randInt())
+        var shouldContinue = true
+        while (shouldContinue) {
+            if (CARD_PAIRS_VALUE.size == uniqueNumbers) {
+                shouldContinue = false
+                continue
+            }
+            val randomInteger = randInt()
+            if (CARD_PAIRS_VALUE.contains(randomInteger)) {
+                // skip this number
+                continue
+            }
+            CARD_PAIRS_VALUE.add(randomInteger)
         }
         CARD_PAIRS_VALUE.addAll(CARD_PAIRS_VALUE)
         CARD_PAIRS_VALUE.shuffle()
     }
+
+    fun onCardClicked(cardId: Int) {
+        if (waitForFlipBack) {
+            Timber.d("Game in Play")
+            return
+        }
+        val clickedCard = itemCards.first { it.id == cardId }
+        if (clickedCard.isFlipped) {
+            Timber.d("isFlipped")
+            return
+        }
+        if (clickedCard.isAnimationInProgress) {
+            Timber.d("isAnimationInProgress")
+            return
+        }
+        steps += 1
+        _repoEventLiveData.value = StepUpdateEvent(steps)
+        current = clickedCard
+        if (!checkForMatch(card = clickedCard)) {
+            Timber.d("It's not a match")
+            waitForFlipBack = true
+        }
+        startAnimation(cardId)
+        _repoEventLiveData.value = FlipInItemEvent(cardId)
+        _repoEventLiveData.value = DelayRunnableEvent()
+        Timber.d("Steps $steps")
+    }
+
+    fun checkForMatch(card: Card): Boolean {
+        val number = card.number
+        if (previousNumber?.number == null) {
+            previousNumber = card
+            return true
+        } else if (previousNumber?.number == number) {
+            matchedCards.add(card)
+            previousNumber?.run {
+                matchedCards.add(this)
+            }
+            if (matchedCards.size == itemCards.size) {
+                _repoEventLiveData.value = ShowDialogEvent()
+            }
+            previousNumber = null
+            current = null
+            _repoEventLiveData.value = RemoveRunnableEvent()
+            return true
+        } else {
+            Timber.d(" not a match")
+            return false
+        }
+    }
+
+    fun flipBackUnmatched() {
+        if (waitForFlipBack) {
+            waitForFlipBack = false
+            previousNumber?.run {
+                startAnimation(cardId = id)
+                _repoEventLiveData.value = FlipOutItemEvent(id)
+            }
+            current?.run {
+                startAnimation(cardId = id)
+                _repoEventLiveData.value = FlipOutItemEvent(id) }
+            previousNumber = null
+            current = null
+        }
+    }
+
+    val restart: () -> Unit = {
+        buildNumbers()
+        previousNumber?.run {
+            _repoEventLiveData.value = FlipOutItemEvent(id)
+        }
+        current?.run {
+            _repoEventLiveData.value = FlipOutItemEvent(id)
+        }
+        previousNumber = null
+        current = null
+        matchedCards.forEach {
+            _repoEventLiveData.value = FlipOutItemEvent(it.id)
+        }
+        matchedCards.clear()
+        steps = 0
+        _repoEventLiveData.value = RestartEvent()
+    }
+
+    val onAnimationCompleted: (Int) -> Unit = { cardId ->
+        Timber.d("onAnimationCompleted cardId $cardId")
+        val clickedCard = itemCards.first { it.id == cardId }
+        val index = itemCards.indexOf(clickedCard)
+        clickedCard.isFlipped = !clickedCard.isFlipped
+        clickedCard.isAnimationInProgress = false
+        itemCards[index] = clickedCard
+    }
+
+    fun startAnimation(cardId: Int) {
+        Timber.d("startAnimation cardId $cardId")
+        val clickedCard = itemCards.first { it.id == cardId }
+        val index = itemCards.indexOf(clickedCard)
+        clickedCard.isAnimationInProgress = true
+        itemCards[index] = clickedCard
+    }
 }
 
-data class Card(var isFlipped: Boolean = false, val id: Int, var isAnimationInProgress: Boolean = false)
+data class Card(var isFlipped: Boolean = false, val id: Int, var isAnimationInProgress: Boolean = false, val number: Int)
+
+sealed class RepoEvent
+class FlipInItemEvent(val cardId: Int) : RepoEvent()
+class FlipOutItemEvent(val cardId: Int) : RepoEvent()
+class RestartEvent(var message: String = "") : RepoEvent()
+class StepUpdateEvent(val cardId: Int) : RepoEvent()
+class RemoveRunnableEvent(var message: String = "") : RepoEvent()
+class DelayRunnableEvent(var message: String = "") : RepoEvent()
+class ShowDialogEvent(var message: String = "") : RepoEvent()
+
+fun <T> MutableCollection<T>.replaceWith(elements: Collection<T>) {
+    this.clear()
+    this.addAll(elements)
+}

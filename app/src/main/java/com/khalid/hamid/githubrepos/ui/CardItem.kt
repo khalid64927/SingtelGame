@@ -33,7 +33,9 @@ class CardItem @JvmOverloads constructor(
     private var cardClickListener: OnClickListener? = null
     var isAnimationInProgress = false
 
-    fun flipCard(context: Context, viewToBringInFront: View, inVisibleView: View) {
+    var onAnimationCompleted :(Int)->Unit = {}
+
+    fun flipCard(context: Context, viewToBringInFront: View, inVisibleView: View, onAnimationCompleted : (Int)->Unit = {}) {
         try {
             isAnimationInProgress = true
             viewToBringInFront.visible()
@@ -60,6 +62,7 @@ class CardItem @JvmOverloads constructor(
                 inVisibleView.gone()
                 viewToBringInFront.visible()
                 isAnimationInProgress = false
+                onAnimationCompleted(this.id)
             }
         } catch (e: Exception) {
             // logHandledException(e)
