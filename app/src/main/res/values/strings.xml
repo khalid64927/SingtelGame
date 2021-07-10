@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">GithubRepos</string>
+    <string name="loading_tasks_error">Something went wrong at our end</string>
+    <string name="project_avatar_imge">project avatar imge</string>
+    <string name="something_went_wrong">Something went wrong..</string>
+    <string name="an_alien_is_probably_blocking_your_signal">An alien is probably blocking your signal.</string>
+    <string name="retry">RETRY</string>
+    <string name="restart">Restart</string>
+    <string name="steps">Steps: </string>
+    <string name="count">5</string>
+    <string name="image">image</string>
+    <string name="label_number">22</string>
+    <string name="label_question">\?</string>
+    <string name="dialog_game_complete">You win the game by %1$d steps</string>
+    <string name="try_again">Try another round</string>
+    <string name="congratulations">Congratulations!</string>
+</resources>

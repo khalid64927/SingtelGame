@@ -1,0 +1,46 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@color/colorBlack</item>
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+
+    <style name="title" parent="@android:style/TextAppearance">
+        <item name="android:textSize">12dp</item>
+        <item name="android:textColor">@color/colorTitle</item>
+       <!-- <item name="android:fontFamily">@font/roboto_regular</item>-->
+    </style>
+
+    <style name="domain" parent="@android:style/TextAppearance">
+        <item name="android:textSize">15dp</item>
+        <item name="android:textColor">@color/colorTitle</item>
+        <!--<item name="android:fontFamily">@font/roboto_medium</item>-->
+    </style>
+
+    <style name="bold" parent="@android:style/TextAppearance">
+        <item name="android:textSize">18dp</item>
+        <item name="android:textColor">@color/colorBB</item>
+        <!--<item name="android:fontFamily">@font/roboto_bold</item>-->
+    </style>
+
+    <style name="alien" parent="@android:style/TextAppearance">
+        <item name="android:textSize">15dp</item>
+        <item name="android:textColor">@color/colorLight</item>
+        <!--<item name="android:fontFamily">@font/roboto_regular</item>-->
+    </style>
+
+    <style name="OutlineStyle" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="strokeColor">@color/colorGreen</item>
+        <item name="android:textColor">@color/colorGreen</item>
+        <!--<item name="font">@font/roboto_medium</item>-->
+        <item name="backgroundTint">@color/colorFill</item>
+        <item name="strokeWidth">2dp</item>
+    </style>
+
+</resources>

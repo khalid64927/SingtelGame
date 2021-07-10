@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <data>
+        <import type="com.khalid.hamid.githubrepos.network.Status" />
+        <import type="com.khalid.hamid.githubrepos.network.Resource" />
+
+        <variable
+            name="repos"
+            type="com.khalid.hamid.githubrepos.vo.RepoViewData" />
+    </data>
+
+<androidx.constraintlayout.widget.ConstraintLayout
+    android:background="@android:color/black"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <com.khalid.hamid.githubrepos.ui.CardItem
+        android:id="@+id/card_front"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        tools:visibility="visible"
+        android:elevation="12dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintDimensionRatio="1:1.2"
+        app:cardCornerRadius="10dp"
+        android:layout_centerHorizontal="true">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:background="@drawable/btn_border"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/label_question"
+                android:textSize="64sp"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:text="@string/label_question" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </com.khalid.hamid.githubrepos.ui.CardItem>
+
+    <com.khalid.hamid.githubrepos.ui.CardItem
+        android:id="@+id/card_back"
+        android:layout_width="match_parent"
+        android:visibility="gone"
+        tools:visibility="gone"
+        android:layout_height="0dp"
+        android:elevation="12dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintDimensionRatio="1:1.2"
+        app:cardCornerRadius="10dp"
+        android:layout_centerHorizontal="true">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:background="@drawable/btn_rounded_solid"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/label_number"
+                android:textSize="64sp"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:text="@string/label_number" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </com.khalid.hamid.githubrepos.ui.CardItem>
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+</layout>
