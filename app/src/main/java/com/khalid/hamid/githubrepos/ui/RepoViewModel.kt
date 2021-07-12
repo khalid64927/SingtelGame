@@ -54,9 +54,12 @@ class RepoViewModel@Inject constructor() : ViewModel() {
         val rand: Random = SecureRandom()
         return rand.nextInt(100 - 1 + 1) + 1
     }
+
     val uniqueNumbers = 6
 
-    init { buildNumbers() }
+     init {
+         buildNumbers()
+     }
 
     fun buildNumbers() {
         CARD_PAIRS_VALUE.clear()
@@ -98,8 +101,7 @@ class RepoViewModel@Inject constructor() : ViewModel() {
             Timber.d("It's not a match")
             waitForFlipBack = true
         }
-        startAnimation(cardId)
-        _repoEventLiveData.value = FlipInItemEvent(cardId)
+        flipInItemEvent(cardId)
         _repoEventLiveData.value = DelayRunnableEvent()
         Timber.d("Steps $steps")
     }
@@ -131,33 +133,55 @@ class RepoViewModel@Inject constructor() : ViewModel() {
         if (waitForFlipBack) {
             waitForFlipBack = false
             previousNumber?.run {
-                startAnimation(cardId = id)
-                _repoEventLiveData.value = FlipOutItemEvent(id)
+                flipOutItemEvent(id)
             }
             current?.run {
-                startAnimation(cardId = id)
-                _repoEventLiveData.value = FlipOutItemEvent(id) }
+                flipOutItemEvent(id)
+                }
             previousNumber = null
             current = null
         }
     }
 
+    var isRestartRequested = false
+
     val restart: () -> Unit = {
+        isRestartRequested = true
         buildNumbers()
         previousNumber?.run {
-            _repoEventLiveData.value = FlipOutItemEvent(id)
+            flipOutItemEvent(id)
         }
         current?.run {
-            _repoEventLiveData.value = FlipOutItemEvent(id)
+            flipOutItemEvent(id)
         }
         previousNumber = null
         current = null
         matchedCards.forEach {
-            _repoEventLiveData.value = FlipOutItemEvent(it.id)
+            flipOutItemEvent(it.id)
         }
         matchedCards.clear()
         steps = 0
-        _repoEventLiveData.value = RestartEvent()
+        if (itemCards.none { it.isFlipped }) {
+            isRestartRequested = false
+            Timber.d("itemCards all animation completed $itemCards")
+            _repoEventLiveData.value = RestartEvent()
+        }
+    }
+
+    fun flipOutItemEvent(cardId: Int) {
+        setCardAnimationState(cardId)
+        _repoEventLiveData.value = FlipOutItemEvent(cardId)
+    }
+
+    fun flipInItemEvent(cardId: Int) {
+        setCardAnimationState(cardId)
+        _repoEventLiveData.value = FlipInItemEvent(cardId)
+    }
+    private fun setCardAnimationState(cardId: Int) {
+        val clickedCard = itemCards.first { it.id == cardId }
+        val index = itemCards.indexOf(clickedCard)
+        clickedCard.isAnimationInProgress = true
+        itemCards[index] = clickedCard
     }
 
     val onAnimationCompleted: (Int) -> Unit = { cardId ->
@@ -167,6 +191,13 @@ class RepoViewModel@Inject constructor() : ViewModel() {
         clickedCard.isFlipped = !clickedCard.isFlipped
         clickedCard.isAnimationInProgress = false
         itemCards[index] = clickedCard
+        if (isRestartRequested) {
+            if (itemCards.map { it.isAnimationInProgress }.none { it }) {
+                isRestartRequested = false
+                Timber.d("itemCards all animation completed $itemCards")
+                _repoEventLiveData.value = RestartEvent()
+            }
+        }
     }
 
     fun startAnimation(cardId: Int) {
